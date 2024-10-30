@@ -1,0 +1,277 @@
+import pytest
+import re
+from playwright.sync_api import sync_playwright, Page, expect
+import time
+from other_utils import *
+import asyncio
+
+
+@pytest.fixture(scope="class")
+def browser_context():
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=False)  # 可视化模式
+        context = browser.new_context(
+            viewport={"width": 1920, "height": 1080}
+        )
+        yield context
+        # context.close()
+        # browser.close()
+
+
+@pytest.fixture(scope="class")
+def logged_in_page(browser_context) -> Page:
+    page = browser_context.new_page()
+    page.goto(
+        "http://192.168.111.232:18901/login?haveWarehouse=1&client_id=iowtb-new&redirect_uri=http://192.168.111.232:9832/login")
+    page.get_by_placeholder("请输入账号").click()
+    page.get_by_placeholder("请输入账号").fill("ssoadmintest6")
+    page.get_by_placeholder("请输入密码").click()
+    page.get_by_placeholder("请输入密码").fill("lhx7758521")
+    page.locator("#warehouse").select_option("1")
+    page.get_by_role("button", name="登录").click()
+    expect(page.locator("header")).to_contain_text("首页")
+    yield page
+    # page.close()
+
+
+class TestInOrderPage:
+    product_batch = str(generate_random_number())
+
+    def test_resave_order(self, logged_in_page: Page) -> None:
+        logged_in_page.locator("li").filter(has_text="首页").click()
+        logged_in_page.reload()
+        logged_in_page.locator("p").filter(has_text="入库").click()
+        logged_in_page.locator("li").filter(has_text="PC收货").first.click()
+        logged_in_page.get_by_role("button", name="提取数据(F1)").click()
+        logged_in_page.get_by_role("row", name="1", exact=True).locator("div").click()
+        logged_in_page.locator(
+            "div:nth-child(5) > .vxe-grid > .vxe-table > .vxe-table--render-wrapper > .vxe-table--fixed-wrapper > .vxe-table--fixed-left-wrapper > .vxe-table--header-wrapper > .vxe-table--header > thead > .vxe-header--row > th > .vxe-cell > .vxe-cell--title > .vxe-cell--checkbox > .vxe-checkbox--icon").click()
+        logged_in_page.get_by_role("button", name="生成ASN").click()
+        logged_in_page.get_by_role("button", name="确 定").click()
+        logged_in_page.get_by_label("启运时间").click()
+        logged_in_page.get_by_text("23", exact=True).click()
+        logged_in_page.get_by_label("到货时间").click()
+        time.sleep(0.5)
+        logged_in_page.get_by_role("cell", name="24").first.click()
+        logged_in_page.get_by_label("运输方式").click()
+        logged_in_page.get_by_text("托运公司送货").click()
+        logged_in_page.get_by_label("运输工具").click()
+        logged_in_page.get_by_title("厢式货车").click()
+        logged_in_page.get_by_role("row", name=" 1").locator("div").first.click()
+        logged_in_page.locator("#app div").filter(has_text=re.compile(r"^50g$")).click()
+        logged_in_page.locator("#app").get_by_role("cell", name="50g").get_by_label("").check()
+        logged_in_page.locator("#app").get_by_role("cell", name="国药准字氨糖").get_by_label("").check()
+        logged_in_page.locator("td:nth-child(12)").first.click()
+        logged_in_page.get_by_role("cell", name="请输入产品批号").get_by_role("textbox").fill("20241023001")
+        logged_in_page.locator("td:nth-child(15) > .vxe-cell").first.click()
+        logged_in_page.get_by_role("cell", name="").get_by_role("textbox").click()
+        logged_in_page.get_by_text("一月").nth(1).click()
+        logged_in_page.locator("td:nth-child(16) > .vxe-cell").first.click()
+        logged_in_page.get_by_role("cell", name="").get_by_role("textbox").click()
+        logged_in_page.get_by_text("十二月").nth(1).click()
+        logged_in_page.locator("td:nth-child(16) > .vxe-cell").first.click()
+        logged_in_page.get_by_role("cell", name="-12").get_by_role("textbox").press("Enter")
+        logged_in_page.locator("div").filter(has_text=re.compile(r"^批号批号确认$")).get_by_role("textbox").click()
+        logged_in_page.locator("div").filter(has_text=re.compile(r"^批号批号确认$")).get_by_role("textbox").fill(
+            "20241023001")
+        logged_in_page.get_by_role("button", name="批号确认").click()
+        logged_in_page.locator("div").filter(has_text=re.compile(r"^生产日期/月生产日期\/月确认$")).get_by_placeholder(
+            "请选择月份").click()
+        logged_in_page.get_by_text("1月", exact=True).click()
+        logged_in_page.get_by_role("button", name="生产日期/月确认").click()
+        logged_in_page.get_by_role("textbox", name="请选择月份").click()
+        logged_in_page.get_by_role("cell", name="12月").locator("div").click()
+        logged_in_page.get_by_role("button", name="有效期至/月确认").click()
+        logged_in_page.get_by_role("button", name="确 认").click()
+        logged_in_page.get_by_role("button", name="保存(F10)").click()
+        logged_in_page.get_by_role("button", name="确 定").click()
+
+    def test_asn_list_page(self, logged_in_page: Page) -> None:
+        logged_in_page.locator("li").filter(has_text="首页").click()
+        logged_in_page.reload()
+        logged_in_page.get_by_text("入库").click()
+        logged_in_page.locator("li").filter(has_text="ASN列表").click()
+        logged_in_page.get_by_role("button", name="搜索").click()
+        logged_in_page.get_by_role("button", name="重置").click()
+        expect(logged_in_page.get_by_role("grid")).to_contain_text("采购订单")
+        logged_in_page.locator(".action_btn > div > .ant-btn").first.click()
+        expect(logged_in_page.get_by_role("grid")).to_contain_text("氨糖")
+        logged_in_page.locator("li").filter(has_text="ASN列表").click()
+        logged_in_page.locator(".ag-selection-checkbox").first.click()
+        logged_in_page.get_by_role("button", name="收货完成").click()
+        expect(logged_in_page.get_by_text("ASN状态为【创建,收货中】才能收货完成")).to_be_visible()
+
+    def test_asn_able_pack(self, logged_in_page: Page) -> None:
+        logged_in_page.locator("li").filter(has_text="首页").click()
+        logged_in_page.reload()
+        logged_in_page.locator("li").filter(has_text="入库").click()
+        logged_in_page.get_by_text("ASN效期管理列表").click()
+        logged_in_page.locator("li").filter(has_text="ASN效期管理列表").click()
+        logged_in_page.get_by_role("button", name="搜索").click()
+        logged_in_page.get_by_role("button", name="重置").click()
+        expect(logged_in_page.get_by_role("grid")).to_contain_text("收货完成")
+
+    def test_asn_refuse_pack(self, logged_in_page: Page) -> None:
+        logged_in_page.locator("li").filter(has_text="首页").click()
+        logged_in_page.reload()
+        logged_in_page.locator("li").filter(has_text="入库").click()
+        logged_in_page.get_by_text("ASN效期管理列表").click()
+        logged_in_page.locator("li").filter(has_text="ASN效期管理列表").click()
+        logged_in_page.get_by_role("button", name="搜索").click()
+        logged_in_page.get_by_role("button", name="重置").click()
+        expect(logged_in_page.get_by_role("grid")).to_contain_text("收货完成")
+        logged_in_page.locator("li").filter(has_text="首页").click()
+        logged_in_page.locator("li").filter(has_text="入库").click()
+        logged_in_page.locator("li").filter(has_text="ASN拒收列表").click()
+        expect(logged_in_page.locator(".ag-row-even > div:nth-child(4)").first).to_be_visible()
+        logged_in_page.get_by_role("button", name="搜索").click()
+        logged_in_page.get_by_role("button", name="重置").click()
+
+    def test_check_resave_page(self, logged_in_page: Page) -> None:
+        logged_in_page.locator("li").filter(has_text="首页").click()
+        logged_in_page.reload()
+        logged_in_page.locator("li").filter(has_text="入库").click()
+        logged_in_page.locator("li").filter(has_text="PC验收").first.click()
+        logged_in_page.get_by_role("button", name="验收索取(F1)").click()
+        logged_in_page.get_by_role("gridcell", name="1", exact=True).click()
+        logged_in_page.locator(
+            ".vxe-table--fixed-left-wrapper > .vxe-table--header-wrapper > .vxe-table--header > thead > .vxe-header--row > th > .vxe-cell > .vxe-cell--title > .vxe-cell--checkbox > .vxe-checkbox--icon").click()
+        logged_in_page.get_by_role("cell", name="50g").get_by_label("").check()
+        logged_in_page.get_by_role("cell", name="国药准字金嗓子喉宝").get_by_label("").check()
+        logged_in_page.locator("td:nth-child(9) > .vxe-cell").click()
+        logged_in_page.get_by_role("cell", name=" 请选择验收评定").locator("i").click()
+        logged_in_page.locator("div").filter(has_text=re.compile(r"^合格$")).click()
+        logged_in_page.get_by_role("button", name="保存(F10)").click()
+        logged_in_page.get_by_label("Close", exact=True).click()
+        expect(logged_in_page.locator("body")).to_contain_text("成功")
+
+    def test_check_resave_list_page(self, logged_in_page: Page) -> None:
+        logged_in_page.locator("li").filter(has_text="首页").click()
+        logged_in_page.reload()
+        logged_in_page.locator("li").filter(has_text="入库").click()
+        logged_in_page.locator("li").filter(has_text="验收列表").click()
+        expect(logged_in_page.locator("#app")).to_contain_text("采购订单")
+        logged_in_page.get_by_role("button", name="搜索").click()
+        logged_in_page.get_by_role("button", name="重置").click()
+        logged_in_page.get_by_role("button", name="搜索").click()
+        logged_in_page.get_by_role("textbox", name="请输入").nth(1).click()
+        logged_in_page.get_by_role("textbox", name="请输入").nth(1).fill("错误的验收单号")
+        logged_in_page.get_by_role("button", name="搜索").click()
+        logged_in_page.get_by_role("button", name="重置").click()
+        logged_in_page.get_by_role("button", name="重置").click()
+        logged_in_page.get_by_role("button", name="搜索").click()
+        logged_in_page.locator(".action_btn > div > .ant-btn").first.click()
+        logged_in_page.locator("li").filter(has_text="验收列表").click()
+        logged_in_page.locator(".ag-selection-checkbox").first.click()
+        logged_in_page.get_by_role("button", name="打印验收单").click()
+
+    def test_check_resave_allocation_page(self, logged_in_page: Page) -> None:
+        logged_in_page.locator("li").filter(has_text="首页").click()
+        logged_in_page.reload()
+        logged_in_page.locator("li").filter(has_text="入库").click()
+        logged_in_page.locator("li").filter(has_text="验收分配记录").click()
+        logged_in_page.get_by_role("button", name="搜索").click()
+
+    def test_put_shelf_page(self, logged_in_page: Page) -> None:
+        logged_in_page.locator("li").filter(has_text="首页").click()
+        logged_in_page.reload()
+        logged_in_page.locator("li").filter(has_text="入库").click()
+        logged_in_page.locator("li").filter(has_text="PC上架(无校验)").click()
+        logged_in_page.get_by_label("产品").click()
+        logged_in_page.get_by_label("产品").fill("氨糖")
+        logged_in_page.get_by_text("氨糖--50g--智汇奇策科技有限公司").click()
+        logged_in_page.get_by_role("button", name="查 询").click()
+        time.sleep(0.5)
+        logged_in_page.locator("tr:nth-child(2) > td:nth-child(4) > .vxe-cell > .vxe-cell--label").click()
+        time.sleep(0.5)
+        logged_in_page.locator(
+            ".vxe-table--fixed-left-wrapper > .vxe-table--header-wrapper > .vxe-table--header > thead > .vxe-header--row > th > .vxe-cell").first.click()
+        time.sleep(0.5)
+        logged_in_page.get_by_role("button", name="保存(F10)").click()
+        expect(logged_in_page.locator("body")).to_contain_text("上架任务完成")
+        logged_in_page.get_by_role("button", name="上架索取(F1)").click()
+
+    def test_put_shelf_list_page(self, logged_in_page: Page) -> None:
+        logged_in_page.locator("li").filter(has_text="首页").click()
+        logged_in_page.reload()
+        logged_in_page.locator("li").filter(has_text="入库").click()
+        logged_in_page.locator("li").filter(has_text="上架列表").click()
+        logged_in_page.get_by_role("button", name="搜索").click()
+        expect(logged_in_page.locator("body")).to_contain_text("成功")
+        expect(logged_in_page.get_by_role("grid")).to_contain_text("入库上架")
+        logged_in_page.locator(".action_btn > div > .ant-btn").first.click()
+        expect(logged_in_page.get_by_role("grid")).to_contain_text("零售事业部")
+        logged_in_page.locator("li").filter(has_text="上架列表").click()
+        logged_in_page.get_by_placeholder("请输入").first.click()
+        logged_in_page.get_by_placeholder("请输入").first.fill("错误的业务单号")
+        logged_in_page.get_by_role("button", name="搜索").click()
+        expect(logged_in_page.locator("body")).to_contain_text("成功")
+        logged_in_page.get_by_role("button", name="重置").click()
+        logged_in_page.get_by_role("button", name="搜索").click()
+
+    def test_put_shelf_mission_page(self, logged_in_page: Page) -> None:
+        logged_in_page.locator("li").filter(has_text="首页").click()
+        logged_in_page.reload()
+        logged_in_page.locator("li").filter(has_text="入库").click()
+        logged_in_page.locator("li").filter(has_text="上架任务列表").click()
+        expect(logged_in_page.locator("body")).to_contain_text("成功")
+        logged_in_page.get_by_placeholder("请输入").first.click()
+        logged_in_page.get_by_placeholder("请输入").first.fill("错误的业务单号")
+        logged_in_page.get_by_role("button", name="搜索").click()
+        expect(logged_in_page.locator("body")).to_contain_text("成功")
+        logged_in_page.get_by_role("button", name="重置").click()
+        logged_in_page.get_by_role("button", name="搜索").click()
+        logged_in_page.locator(".action_btn > div > .ant-btn").first.click()
+
+    def test_in_order_operation_page(self, logged_in_page: Page) -> None:
+        logged_in_page.locator("li").filter(has_text="首页").click()
+        logged_in_page.reload()
+        logged_in_page.locator("li").filter(has_text="入库").click()
+        logged_in_page.locator("li").filter(has_text="入库中控台").click()
+        logged_in_page.get_by_role("gridcell", name="1", exact=True).click()
+        logged_in_page.get_by_role("button", name="修改").click()
+        logged_in_page.locator("td:nth-child(9) > .vxe-cell").click()
+        logged_in_page.get_by_label("", exact=True).get_by_role("textbox").fill(TestInOrderPage.product_batch)
+        logged_in_page.locator("td:nth-child(12) > .vxe-cell").click()
+        logged_in_page.get_by_label("", exact=True).get_by_role("textbox").click()
+        logged_in_page.get_by_role("cell", name="一月").nth(1).click()
+        logged_in_page.locator("td:nth-child(13) > .vxe-cell").click()
+        logged_in_page.get_by_label("", exact=True).get_by_role("textbox").click()
+        logged_in_page.get_by_text("十二月").nth(1).click()
+        logged_in_page.get_by_role("button", name="确 认").click()
+        logged_in_page.get_by_role("button", name="搜索").click()
+        expect(logged_in_page.locator("body")).to_contain_text("成功")
+        logged_in_page.get_by_role("gridcell", name="1", exact=True).click()
+
+    def test_in_order_operations_page(self, logged_in_page: Page) -> None:
+        logged_in_page.locator("li").filter(has_text="首页").click()
+        logged_in_page.reload()
+        logged_in_page.locator("li").filter(has_text="入库").click()
+        logged_in_page.locator("li").filter(has_text="入库批量操作").click()
+        logged_in_page.locator(".action_btn > div > .ant-btn").first.click()
+        expect(logged_in_page.get_by_label("订单类型")).to_have_value("退仓申请单(直配)");
+        logged_in_page.locator("li").filter(has_text="入库批量操作").click()
+        logged_in_page.locator(".ag-cell-wrapper").first.click()
+        logged_in_page.get_by_label("Press Space to toggle row selection (checked)").uncheck()
+        logged_in_page.get_by_role("button", name="搜索").click()
+        logged_in_page.get_by_role("button", name="重置").click()
+        logged_in_page.get_by_text("新增条件搜索重置").click()
+        logged_in_page.get_by_role("button", name="搜索").click()
+        expect(logged_in_page.locator("body")).to_contain_text("成功")
+
+    def test_in_order_print_page(self, logged_in_page: Page) -> None:
+        logged_in_page.locator("li").filter(has_text="首页").click()
+        logged_in_page.reload()
+        logged_in_page.locator("li").filter(has_text="入库").click()
+        logged_in_page.locator("li").filter(has_text="入库单据打印").click()
+        logged_in_page.get_by_role("button", name="搜索").click()
+        logged_in_page.get_by_role("tab", name="验收打印").click()
+        logged_in_page.get_by_role("gridcell", name="1", exact=True).click()
+        logged_in_page.get_by_role("button", name="搜索").first.click()
+        expect(logged_in_page.locator("body")).to_contain_text("成功")
+        logged_in_page.locator("div").filter(has_text=re.compile(r"^上架打印$")).first.click()
+        logged_in_page.get_by_role("button", name="搜索").first.click()
+        expect(logged_in_page.locator("body")).to_contain_text("成功")
+        logged_in_page.locator("div").filter(has_text=re.compile(r"^财务打印$")).first.click()
+        logged_in_page.get_by_role("button", name="搜索").click()
+        expect(logged_in_page.locator("body")).to_contain_text("成功")
